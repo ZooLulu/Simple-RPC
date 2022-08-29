@@ -15,10 +15,10 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class DefaultServiceRegistry implements ServiceRegistry{
     private static final Logger logger = LoggerFactory.getLogger(DefaultServiceRegistry.class);
-    //保存服务名-服务对象
-    private final Map<String, Object> serviceMap = new ConcurrentHashMap<>();
-    //保存已经注册的对象
-    private final Set<String> registeredService = ConcurrentHashMap.newKeySet();
+    //保存服务名-服务对象,static全局唯一
+    private static final Map<String, Object> serviceMap = new ConcurrentHashMap<>();
+    //保存已经注册的对象,static全局唯一
+    private static final Set<String> registeredService = ConcurrentHashMap.newKeySet();
 
     @Override
     public <T> void register(T service) {
