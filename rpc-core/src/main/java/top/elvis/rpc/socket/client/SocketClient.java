@@ -8,10 +8,15 @@ import top.elvis.rpc.entity.RpcResponse;
 import top.elvis.rpc.enumeration.ResponseCode;
 import top.elvis.rpc.enumeration.RpcError;
 import top.elvis.rpc.exception.RpcException;
+import top.elvis.rpc.registry.NacosServiceRegistry;
+import top.elvis.rpc.registry.ServiceRegistry;
+import top.elvis.rpc.serializer.CommonSerializer;
+import top.elvis.rpc.socket.util.ObjectReader;
+import top.elvis.rpc.socket.util.ObjectWriter;
+import top.elvis.rpc.util.RpcMessageChecker;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 
 /**
@@ -21,21 +26,32 @@ import java.net.Socket;
  */
 public class SocketClient implements RpcClient {
     private static final Logger logger = LoggerFactory.getLogger(RpcClient.class);
-    private final String host;
-    private final int port;
-
-    public SocketClient(String host, int port) {
-        this.host = host;
-        this.port = port;
+    //注册中心进行服务发现
+    private final ServiceRegistry serviceRegistry;
+    //定义序列化工具
+    private CommonSerializer serializer;
+    public SocketClient() {
+        this.serviceRegistry = new NacosServiceRegistry();
+    }
+    @Override
+    public void setSerializer(CommonSerializer serializer) {
+        this.serializer = serializer;
     }
     @Override
     public Object sendRequest(RpcRequest rpcRequest){
-        try(Socket socket=new Socket(host,port)){
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
-            ObjectInputStream objectInputStream = new ObjectInputStream(socket.getInputStream());
-            objectOutputStream.writeObject(rpcRequest);
-            objectOutputStream.flush();
-            RpcResponse rpcResponse = (RpcResponse) objectInputStream.readObject();
+        if(serializer == null) {
+            logger.error("serializer not set");
+            throw new RpcException(RpcError.SERIALIZER_NOT_FOUND);
+        }
+        //服务发现
+        InetSocketAddress inetSocketAddress = serviceRegistry.lookupService(rpcRequest.getInterfaceName());
+        try(Socket socket=new Socket()){
+            socket.connect(inetSocketAddress);
+            OutputStream outputStream = socket.getOutputStream();
+            InputStream inputStream = socket.getInputStream();
+            ObjectWriter.writeObject(outputStream, rpcRequest, serializer);
+            Object obj = ObjectReader.readObject(inputStream);
+            RpcResponse rpcResponse = (RpcResponse) obj;
             //无响应
             if(rpcResponse == null) {
                 logger.error("service invocation failure, service: {}", rpcRequest.getInterfaceName());
@@ -46,8 +62,9 @@ public class SocketClient implements RpcClient {
                 logger.error("service invocation failure, service: {}, response:{}", rpcRequest.getInterfaceName(), rpcResponse);
                 throw new RpcException(RpcError.SERVICE_INVOCATION_FAILURE, " service:" + rpcRequest.getInterfaceName());
             }
+            RpcMessageChecker.check(rpcRequest, rpcResponse);
             return rpcResponse.getData();
-        }catch (IOException | ClassNotFoundException e){
+        }catch (IOException e){
             logger.error("sendRquest error: ", e);
             throw new RpcException("service invocation failure: ", e);
         }

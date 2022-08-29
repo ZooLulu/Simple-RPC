@@ -15,6 +15,8 @@ import java.io.Serializable;
 //没有无参数构造器序列化过程会报错
 @NoArgsConstructor
 public class RpcRequest implements Serializable{
+    //请求号
+    private String requestId;
     //接口名称
     private String interfaceName;
     //方法名称

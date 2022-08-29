@@ -1,6 +1,7 @@
 package top.elvis.rpc;
 
 import top.elvis.rpc.entity.RpcRequest;
+import top.elvis.rpc.serializer.CommonSerializer;
 
 /**
  * 客户端通用接口
@@ -8,4 +9,5 @@ import top.elvis.rpc.entity.RpcRequest;
  */
 public interface RpcClient {
     Object sendRequest(RpcRequest rpcRequest);
+    void setSerializer(CommonSerializer serializer);
 }

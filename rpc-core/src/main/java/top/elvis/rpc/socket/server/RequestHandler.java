@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory;
 import top.elvis.rpc.entity.RpcRequest;
 import top.elvis.rpc.entity.RpcResponse;
 import top.elvis.rpc.enumeration.ResponseCode;
+import top.elvis.rpc.provider.ServiceProvider;
+import top.elvis.rpc.provider.ServiceProviderImpl;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -15,7 +17,11 @@ import java.lang.reflect.Method;
  */
 public class RequestHandler {
     private static final Logger logger = LoggerFactory.getLogger(RequestHandler.class);
-
+    //全局唯一本地注册表
+    private static final ServiceProvider serviceProvider;
+    static {
+        serviceProvider = new ServiceProviderImpl();
+    }
     /**
      * 反射调用特定的方法
      * @params
@@ -24,8 +30,9 @@ public class RequestHandler {
      * @return
      * Object: 执行结果
      */
-    public Object handle(RpcRequest rpcRequest, Object service){
+    public Object handle(RpcRequest rpcRequest){
         Object result = null;
+        Object service = serviceProvider.getServiceProvider(rpcRequest.getInterfaceName());
         try {
             result = invokeTargetMethod(rpcRequest, service);
             logger.info("service:{} successful invoke method:{}", rpcRequest.getInterfaceName(), rpcRequest.getMethodName());
@@ -47,7 +54,7 @@ public class RequestHandler {
         try {
             method = service.getClass().getMethod(rpcRequest.getMethodName(), rpcRequest.getParamTypes());
         } catch (NoSuchMethodException e) {
-            return RpcResponse.fail(ResponseCode.METHOD_NOT_FOUND);
+            return RpcResponse.fail(ResponseCode.METHOD_NOT_FOUND, rpcRequest.getRequestId());
         }
         return method.invoke(service, rpcRequest.getParameters());
     }

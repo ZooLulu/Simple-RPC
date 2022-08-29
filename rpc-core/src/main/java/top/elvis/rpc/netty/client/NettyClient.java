@@ -13,8 +13,17 @@ import top.elvis.rpc.codec.CommonDecoder;
 import top.elvis.rpc.codec.CommonEncoder;
 import top.elvis.rpc.entity.RpcRequest;
 import top.elvis.rpc.entity.RpcResponse;
+import top.elvis.rpc.enumeration.RpcError;
+import top.elvis.rpc.exception.RpcException;
+import top.elvis.rpc.registry.NacosServiceRegistry;
+import top.elvis.rpc.registry.ServiceRegistry;
+import top.elvis.rpc.serializer.CommonSerializer;
 import top.elvis.rpc.serializer.JsonSerializer;
 import top.elvis.rpc.serializer.KryoSerializer;
+import top.elvis.rpc.util.RpcMessageChecker;
+
+import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * netty服务消费方
@@ -23,13 +32,15 @@ import top.elvis.rpc.serializer.KryoSerializer;
 public class NettyClient implements RpcClient {
     private static final Logger logger = LoggerFactory.getLogger(NettyClient.class);
 
-    private String host;
-    private int port;
+    //注册中心进行服务发现
+    private final ServiceRegistry serviceRegistry;
     private static final Bootstrap bootstrap;
+    //序列化工具
+    private CommonSerializer serializer;
 
-    public NettyClient(String host, int port) {
-        this.host = host;
-        this.port = port;
+
+    public NettyClient() {
+        this.serviceRegistry = new NacosServiceRegistry();
     }
 
     static {
@@ -41,28 +52,29 @@ public class NettyClient implements RpcClient {
                 //设置客户端的通道实现类型:异步非阻塞的客户端 TCP Socket 连接
                 .channel(NioSocketChannel.class)
                 //设置保持活动连接状态
-                .option(ChannelOption.SO_KEEPALIVE, true)
-                //使用匿名内部类初始化通道
-                .handler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    protected void initChannel(SocketChannel ch) throws Exception {
-                        ChannelPipeline pipeline = ch.pipeline();
-                        //给pipeline管道设置处理器：解码器、编码器、数据处理器
-                        pipeline.addLast(new CommonDecoder())
-                                .addLast(new CommonEncoder(new KryoSerializer()))
-                                .addLast(new NettyClientHandler());
-                    }
-                });
+                .option(ChannelOption.SO_KEEPALIVE, true);
+    }
+
+    @Override
+    public void setSerializer(CommonSerializer serializer) {
+        this.serializer = serializer;
     }
 
     @Override
     public Object sendRequest(RpcRequest rpcRequest) {
+        //未设置序列化器
+        if(serializer == null) {
+            logger.error("serializer not set");
+            throw new RpcException(RpcError.SERIALIZER_NOT_FOUND);
+        }
+        //原子引用
+        AtomicReference<Object> result = new AtomicReference<>(null);
         try {
-
-            ChannelFuture future = bootstrap.connect(host, port).sync();
-            logger.info("client connect to server {}:{}", host, port);
-            Channel channel = future.channel();
-            if(channel != null) {
+            //根据rpcRequest的接口名称进行服务发现
+            InetSocketAddress inetSocketAddress = serviceRegistry.lookupService(rpcRequest.getInterfaceName());
+            //根据发现的服务初始化channel
+            Channel channel = ChannelProvider.get(inetSocketAddress, serializer);
+            if(channel.isActive()) {
                 //channel 将 RpcRequest 对象写出，并且等待服务端返回的结果
                 //发送是非阻塞的，所以发送后会立刻返回，而无法得到结果
                 channel.writeAndFlush(rpcRequest).addListener(future1 -> {
@@ -77,12 +89,17 @@ public class NettyClient implements RpcClient {
                 AttributeKey<RpcResponse> key = AttributeKey.valueOf("rpcResponse");
                 //channel读取rcpResponse，NettyClientHandler处理写入
                 RpcResponse rpcResponse = channel.attr(key).get();
-                return rpcResponse.getData();
+                RpcMessageChecker.check(rpcRequest, rpcResponse);
+                result.set(rpcResponse.getData());
+            }else{
+                //避免客户端不关闭
+                System.exit(0);
             }
 
         } catch (InterruptedException e) {
             logger.error("send message error: ", e);
         }
-        return null;
+        //没有结果则返回AtomicReference默认值null
+        return result.get();
     }
 }

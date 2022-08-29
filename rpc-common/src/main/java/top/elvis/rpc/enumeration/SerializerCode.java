@@ -12,7 +12,9 @@ import lombok.Getter;
 public enum SerializerCode {
     //序列化工具编号
     KRYO(0),
-    JSON(1);
+    JSON(1),
+    HESSIAN(2),
+    PROTOBUF(3);
 
     private final int code;
 }

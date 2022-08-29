@@ -1,26 +1,22 @@
 package top.elvis.test;
 
-import top.elvis.rpc.RpcClient;
 import top.elvis.rpc.api.HelloObject;
 import top.elvis.rpc.api.HelloService;
-import top.elvis.rpc.netty.client.NettyClient;
+import top.elvis.rpc.serializer.KryoSerializer;
 import top.elvis.rpc.socket.client.RpcClientProxy;
 import top.elvis.rpc.socket.client.SocketClient;
 
 /**
- * RPC客户端测试，动态代理，生成代理对象，并且调用
  * @author oofelvis
  */
-public class TestClient {
+public class SocketTestClient {
     public static void main(String[] args) {
-        //动态代理
-        RpcClient client = new NettyClient("127.0.0.1", 12580);
+        SocketClient client = new SocketClient();
+        client.setSerializer(new KryoSerializer());
         RpcClientProxy proxy = new RpcClientProxy(client);
         HelloService helloService = proxy.getProxy(HelloService.class);
-        //服务调用: 实际执行代理的invoke方法，发送rpcRquest，并得到rpcResponse
-        HelloObject object = new HelloObject(666, "Test message");
+        HelloObject object = new HelloObject(12, "This is a message");
         String res = helloService.hello(object);
         System.out.println(res);
-
     }
 }

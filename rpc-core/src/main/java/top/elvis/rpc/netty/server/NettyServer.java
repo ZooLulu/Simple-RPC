@@ -12,8 +12,17 @@ import org.slf4j.LoggerFactory;
 import top.elvis.rpc.RpcServer;
 import top.elvis.rpc.codec.CommonDecoder;
 import top.elvis.rpc.codec.CommonEncoder;
+import top.elvis.rpc.enumeration.RpcError;
+import top.elvis.rpc.exception.RpcException;
+import top.elvis.rpc.provider.ServiceProvider;
+import top.elvis.rpc.provider.ServiceProviderImpl;
+import top.elvis.rpc.registry.NacosServiceRegistry;
+import top.elvis.rpc.registry.ServiceRegistry;
+import top.elvis.rpc.serializer.CommonSerializer;
 import top.elvis.rpc.serializer.JsonSerializer;
 import top.elvis.rpc.serializer.KryoSerializer;
+
+import java.net.InetSocketAddress;
 
 /**
  * netty服务提供方
@@ -22,8 +31,43 @@ import top.elvis.rpc.serializer.KryoSerializer;
 public class NettyServer implements RpcServer {
     private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
 
+    private final String host;
+    private final int port;
+
+    //注册中心
+    private final ServiceRegistry serviceRegistry;
+    //本地注册表
+    private final ServiceProvider serviceProvider;
+    //定义序列化工具
+    private CommonSerializer serializer;
+
+    public NettyServer(String host, int port) {
+        this.host = host;
+        this.port = port;
+        serviceRegistry = new NacosServiceRegistry();
+        serviceProvider = new ServiceProviderImpl();
+    }
+
     @Override
-    public void start(int port) {
+    public void setSerializer(CommonSerializer serializer) {
+        this.serializer = serializer;
+    }
+
+    @Override
+    public <T> void publishService(Object service, Class<T> serviceClass) {
+        //未设置序列化器
+        if(serializer == null) {
+            logger.error("serializer not set");
+            throw new RpcException(RpcError.SERIALIZER_NOT_FOUND);
+        }
+        //将服务保存在本地的注册表，同时注册到 Nacos 上
+        serviceProvider.addServiceProvider(service);
+        serviceRegistry.register(serviceClass.getCanonicalName(), new InetSocketAddress(host, port));
+        start();
+    }
+
+    @Override
+    public void start() {
         //创建两个线程组 boosGroup、workerGroup
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
@@ -46,7 +90,7 @@ public class NettyServer implements RpcServer {
                         protected void initChannel(SocketChannel ch) throws Exception {
                             ChannelPipeline pipeline = ch.pipeline();
                             //给pipeline管道设置处理器：编码器、解码器、数据处理器
-                            pipeline.addLast(new CommonEncoder(new KryoSerializer()));
+                            pipeline.addLast(new CommonEncoder(serializer));
                             pipeline.addLast(new CommonDecoder());
                             pipeline.addLast(new NettyServerHandler());
                         }

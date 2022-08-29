@@ -1,16 +1,25 @@
 package top.elvis.rpc.registry;
 
+import java.net.InetSocketAddress;
+
 /**
- * 服务注册表接口
+ * 服务注册中心通用接口
  * @author oofelvis
  */
 public interface ServiceRegistry {
     /**
-     * 注册一个服务
-     * @params
-     * service: 待注册的服务实体
+     * 将一个服务注册进注册表
+     *
+     * @param serviceName 服务名称
+     * @param inetSocketAddress 提供服务的地址
      */
-    <T> void register(T service);
+    void register(String serviceName, InetSocketAddress inetSocketAddress);
 
-    Object getService(String serviceName);
+    /**
+     * 根据服务名称查找服务实体
+     *
+     * @param serviceName 服务名称
+     * @return 服务实体
+     */
+    InetSocketAddress lookupService(String serviceName);
 }
