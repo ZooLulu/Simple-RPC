@@ -1,6 +1,8 @@
 package top.elvis.test;
 
 import top.elvis.rpc.api.HelloService;
+import top.elvis.rpc.registry.DefaultServiceRegistry;
+import top.elvis.rpc.registry.ServiceRegistry;
 import top.elvis.rpc.server.RpcServer;
 
 /**
@@ -10,8 +12,11 @@ import top.elvis.rpc.server.RpcServer;
 public class TestServer {
     public static void main(String[] args) {
         HelloService helloService = new HelloServiceImpl();
-        RpcServer rpcServer = new RpcServer();
-        //注册服务，开启12580端口监听
-        rpcServer.register(helloService, 12580);
+        ServiceRegistry serviceRegistry = new DefaultServiceRegistry();
+        //注册服务
+        serviceRegistry.register(helloService);
+        //开启12580端口监听
+        RpcServer rpcServer = new RpcServer(serviceRegistry);
+        rpcServer.start(12580);
     }
 }
