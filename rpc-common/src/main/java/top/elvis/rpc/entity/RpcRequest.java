@@ -1,7 +1,8 @@
 package top.elvis.rpc.entity;
 
-import lombok.Builder;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
@@ -10,7 +11,9 @@ import java.io.Serializable;
  * @author oofelvis
  */
 @Data
-@Builder
+@AllArgsConstructor
+//没有无参数构造器序列化过程会报错
+@NoArgsConstructor
 public class RpcRequest implements Serializable{
     //接口名称
     private String interfaceName;

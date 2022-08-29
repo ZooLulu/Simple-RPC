@@ -1,8 +1,11 @@
 package top.elvis.test;
 
+import top.elvis.rpc.RpcClient;
 import top.elvis.rpc.api.HelloObject;
 import top.elvis.rpc.api.HelloService;
-import top.elvis.rpc.client.RpcClientProxy;
+import top.elvis.rpc.netty.client.NettyClient;
+import top.elvis.rpc.socket.client.RpcClientProxy;
+import top.elvis.rpc.socket.client.SocketClient;
 
 /**
  * RPC客户端测试，动态代理，生成代理对象，并且调用
@@ -11,7 +14,8 @@ import top.elvis.rpc.client.RpcClientProxy;
 public class TestClient {
     public static void main(String[] args) {
         //动态代理
-        RpcClientProxy proxy = new RpcClientProxy("127.0.0.1", 12580);
+        RpcClient client = new NettyClient("127.0.0.1", 12580);
+        RpcClientProxy proxy = new RpcClientProxy(client);
         HelloService helloService = proxy.getProxy(HelloService.class);
         //服务调用: 实际执行代理的invoke方法，发送rpcRquest，并得到rpcResponse
         HelloObject object = new HelloObject(666, "Test message");

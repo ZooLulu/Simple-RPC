@@ -1,6 +1,9 @@
-package top.elvis.rpc.client;
+package top.elvis.rpc.socket.client;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import top.elvis.rpc.RpcClient;
 import top.elvis.rpc.entity.RpcRequest;
-import top.elvis.rpc.entity.RpcResponse;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -10,13 +13,13 @@ import java.lang.reflect.Proxy;
  * @author oofelvis
  */
 public class RpcClientProxy implements InvocationHandler {
-    //服务器主机号
-    private String host;
-    //服务器端口号
-    private int port;
-    public RpcClientProxy(String host, int port){
-        this.host = host;
-        this.port = port;
+    private static final Logger logger = LoggerFactory.getLogger(RpcClientProxy.class);
+
+    //客户端对象接口
+    private final RpcClient client;
+
+    public RpcClientProxy(RpcClient client){
+        this.client = client;
     }
     @SuppressWarnings("unchecked")
     public <T> T getProxy(Class<T> tClass){
@@ -30,13 +33,10 @@ public class RpcClientProxy implements InvocationHandler {
      */
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        RpcRequest rpcRequest = RpcRequest.builder()
-                .interfaceName(method.getDeclaringClass().getName())
-                .methodName(method.getName())
-                .parameters(args)
-                .paramTypes(method.getParameterTypes())
-                .build();
-        RpcClient rpcClient = new RpcClient();
-        return ((RpcResponse) rpcClient.sendRquest(rpcRequest, host, port)).getData();
+        logger.info("Invoke method: {}#{}", method.getDeclaringClass().getName(), method.getName());
+        RpcRequest rpcRequest = new RpcRequest(method.getDeclaringClass().getName(),
+                method.getName(), args, method.getParameterTypes());
+
+        return client.sendRequest(rpcRequest);
     }
 }

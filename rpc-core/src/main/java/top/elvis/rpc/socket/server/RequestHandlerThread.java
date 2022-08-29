@@ -1,4 +1,4 @@
-package top.elvis.rpc.server;
+package top.elvis.rpc.socket.server;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +37,7 @@ public class RequestHandlerThread implements Runnable {
             Object service = serviceRegistry.getService(interfaceName);
             //调用服务接口
             Object result = requestHandler.handle(rpcRequest, service);
+            //返回成功调用结果
             objectOutputStream.writeObject(RpcResponse.success(result));
             objectOutputStream.flush();
         } catch (IOException | ClassNotFoundException e) {

@@ -1,6 +1,7 @@
 package top.elvis.rpc.entity;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import top.elvis.rpc.enumeration.ResponseCode;
 
 import java.io.Serializable;
@@ -10,6 +11,8 @@ import java.io.Serializable;
  * @author oofelvis
  */
 @Data
+//没有无参数构造器序列化过程会报错
+@NoArgsConstructor
 public class RpcResponse<T> implements Serializable {
     //响应状态码
     private Integer statusCode;

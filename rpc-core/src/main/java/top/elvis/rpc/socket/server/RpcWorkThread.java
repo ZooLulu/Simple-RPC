@@ -1,4 +1,4 @@
-package top.elvis.rpc.server;
+package top.elvis.rpc.socket.server;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

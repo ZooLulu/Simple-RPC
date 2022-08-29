@@ -1,7 +1,8 @@
-package top.elvis.rpc.server;
+package top.elvis.rpc.socket.server;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import top.elvis.rpc.RpcServer;
 import top.elvis.rpc.registry.ServiceRegistry;
 
 import java.io.IOException;
@@ -10,10 +11,11 @@ import java.net.Socket;
 import java.util.concurrent.*;
 
 /**
+ * Socket方式远程方法调用的提供者（服务端）
  * RPC服务器实现，使用线程池, 利用服务注册表处理多个服务
  * @author oofelvis
  */
-public class RpcServer {
+public class SocketServer implements RpcServer {
     //服务器线程池
     private final ExecutorService threadPool;
     //服务反射调用处理
@@ -25,7 +27,7 @@ public class RpcServer {
     private static final int MAXIMUM_POOL_SIZE = 60;
     private static final int KEEP_ALIVE_TIME = 60;
     private static final int BLOCKING_QUEUE_CAPACITY = 100;
-    public RpcServer(ServiceRegistry serviceRegistry){
+    public SocketServer(ServiceRegistry serviceRegistry){
         this.serviceRegistry = serviceRegistry;
         ArrayBlockingQueue<Runnable> blockingDeque = new ArrayBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
         ThreadFactory threadFactory = Executors.defaultThreadFactory();
