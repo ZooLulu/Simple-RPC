@@ -13,6 +13,7 @@ import top.elvis.rpc.RpcServer;
 import top.elvis.rpc.codec.CommonDecoder;
 import top.elvis.rpc.codec.CommonEncoder;
 import top.elvis.rpc.serializer.JsonSerializer;
+import top.elvis.rpc.serializer.KryoSerializer;
 
 /**
  * netty服务提供方
@@ -45,7 +46,7 @@ public class NettyServer implements RpcServer {
                         protected void initChannel(SocketChannel ch) throws Exception {
                             ChannelPipeline pipeline = ch.pipeline();
                             //给pipeline管道设置处理器：编码器、解码器、数据处理器
-                            pipeline.addLast(new CommonEncoder(new JsonSerializer()));
+                            pipeline.addLast(new CommonEncoder(new KryoSerializer()));
                             pipeline.addLast(new CommonDecoder());
                             pipeline.addLast(new NettyServerHandler());
                         }

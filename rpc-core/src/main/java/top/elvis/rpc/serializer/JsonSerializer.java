@@ -24,7 +24,7 @@ public class JsonSerializer implements CommonSerializer {
         try {
             return objectMapper.writeValueAsBytes(obj);
         } catch (JsonProcessingException e) {
-            logger.error("Serializer error: {}", e.getMessage());
+            logger.error("JSON serialize error: {}", e.getMessage());
             e.printStackTrace();
             return null;
         }
@@ -39,7 +39,7 @@ public class JsonSerializer implements CommonSerializer {
             }
             return obj;
         } catch (IOException e) {
-            logger.error("deserialize error: {}", e.getMessage());
+            logger.error("JSON deserialize error: {}", e.getMessage());
             e.printStackTrace();
             return null;
         }

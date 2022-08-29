@@ -14,6 +14,7 @@ import top.elvis.rpc.codec.CommonEncoder;
 import top.elvis.rpc.entity.RpcRequest;
 import top.elvis.rpc.entity.RpcResponse;
 import top.elvis.rpc.serializer.JsonSerializer;
+import top.elvis.rpc.serializer.KryoSerializer;
 
 /**
  * netty服务消费方
@@ -48,7 +49,7 @@ public class NettyClient implements RpcClient {
                         ChannelPipeline pipeline = ch.pipeline();
                         //给pipeline管道设置处理器：解码器、编码器、数据处理器
                         pipeline.addLast(new CommonDecoder())
-                                .addLast(new CommonEncoder(new JsonSerializer()))
+                                .addLast(new CommonEncoder(new KryoSerializer()))
                                 .addLast(new NettyClientHandler());
                     }
                 });
