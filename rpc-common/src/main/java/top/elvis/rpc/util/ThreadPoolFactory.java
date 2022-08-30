@@ -1,7 +1,10 @@
 package top.elvis.rpc.util;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.concurrent.*;
 
 /**
@@ -11,6 +14,8 @@ import java.util.concurrent.*;
  * @createTime 2020年05月26日 16:00:00
  */
 public class ThreadPoolFactory {
+    private final static Logger logger = LoggerFactory.getLogger(ThreadPoolFactory.class);
+
     /**
      * 线程池参数
      */
@@ -18,6 +23,8 @@ public class ThreadPoolFactory {
     private static final int MAXIMUM_POOL_SIZE_SIZE = 100;
     private static final int KEEP_ALIVE_TIME = 1;
     private static final int BLOCKING_QUEUE_CAPACITY = 100;
+
+    private static Map<String, ExecutorService> threadPollsMap = new ConcurrentHashMap<>();
 
     private ThreadPoolFactory() {
     }
@@ -27,6 +34,17 @@ public class ThreadPoolFactory {
     }
 
     public static ExecutorService createDefaultThreadPool(String threadNamePrefix, Boolean daemon) {
+        ExecutorService pool = threadPollsMap.computeIfAbsent(threadNamePrefix, k -> createThreadPool(threadNamePrefix, daemon));
+        if (pool.isShutdown() || pool.isTerminated()) {
+            threadPollsMap.remove(threadNamePrefix);
+            pool = createThreadPool(threadNamePrefix, daemon);
+            threadPollsMap.put(threadNamePrefix, pool);
+        }
+        return pool;
+
+    }
+
+    public static ExecutorService createThreadPool(String threadNamePrefix, Boolean daemon) {
         // 使用有界队列
         BlockingQueue<Runnable> workQueue = new ArrayBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
         ThreadFactory threadFactory = createThreadFactory(threadNamePrefix, daemon);
@@ -53,4 +71,18 @@ public class ThreadPoolFactory {
         return Executors.defaultThreadFactory();
     }
 
+    public static void shutDownAll() {
+        logger.info("shut down all thread pool...");
+        threadPollsMap.entrySet().parallelStream().forEach(entry -> {
+            ExecutorService executorService = entry.getValue();
+            executorService.shutdown();
+            logger.info("shut down thread pool [{}] [{}]", entry.getKey(), executorService.isTerminated());
+            try {
+                executorService.awaitTermination(10, TimeUnit.SECONDS);
+            } catch (InterruptedException ie) {
+                logger.error("shut down thread pool failed！");
+                executorService.shutdownNow();
+            }
+        });
+    }
 }

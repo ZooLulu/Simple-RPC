@@ -8,7 +8,11 @@ import top.elvis.rpc.entity.RpcResponse;
 import top.elvis.rpc.enumeration.ResponseCode;
 import top.elvis.rpc.enumeration.RpcError;
 import top.elvis.rpc.exception.RpcException;
+import top.elvis.rpc.loadbalancer.LoadBalancer;
+import top.elvis.rpc.loadbalancer.RandomLoadBalancer;
+import top.elvis.rpc.registry.NacosServiceDiscovery;
 import top.elvis.rpc.registry.NacosServiceRegistry;
+import top.elvis.rpc.registry.ServiceDiscovery;
 import top.elvis.rpc.registry.ServiceRegistry;
 import top.elvis.rpc.serializer.CommonSerializer;
 import top.elvis.rpc.socket.util.ObjectReader;
@@ -26,16 +30,23 @@ import java.net.Socket;
  */
 public class SocketClient implements RpcClient {
     private static final Logger logger = LoggerFactory.getLogger(RpcClient.class);
-    //注册中心进行服务发现
-    private final ServiceRegistry serviceRegistry;
+    //服务发现
+    private final ServiceDiscovery serviceDiscovery;
     //定义序列化工具
     private CommonSerializer serializer;
     public SocketClient() {
-        this.serviceRegistry = new NacosServiceRegistry();
+        this(DEFAULT_SERIALIZER, new RandomLoadBalancer());
     }
-    @Override
-    public void setSerializer(CommonSerializer serializer) {
-        this.serializer = serializer;
+    public SocketClient(LoadBalancer loadBalancer) {
+        this(DEFAULT_SERIALIZER, loadBalancer);
+    }
+    public SocketClient(Integer serializer) {
+        this(serializer, new RandomLoadBalancer());
+    }
+
+    public SocketClient(Integer serializer, LoadBalancer loadBalancer) {
+        this.serviceDiscovery = new NacosServiceDiscovery(loadBalancer);
+        this.serializer = CommonSerializer.getByCode(serializer);
     }
     @Override
     public Object sendRequest(RpcRequest rpcRequest){
@@ -44,7 +55,7 @@ public class SocketClient implements RpcClient {
             throw new RpcException(RpcError.SERIALIZER_NOT_FOUND);
         }
         //服务发现
-        InetSocketAddress inetSocketAddress = serviceRegistry.lookupService(rpcRequest.getInterfaceName());
+        InetSocketAddress inetSocketAddress = serviceDiscovery.lookupService(rpcRequest.getInterfaceName());
         try(Socket socket=new Socket()){
             socket.connect(inetSocketAddress);
             OutputStream outputStream = socket.getOutputStream();
@@ -63,7 +74,7 @@ public class SocketClient implements RpcClient {
                 throw new RpcException(RpcError.SERVICE_INVOCATION_FAILURE, " service:" + rpcRequest.getInterfaceName());
             }
             RpcMessageChecker.check(rpcRequest, rpcResponse);
-            return rpcResponse.getData();
+            return rpcResponse;
         }catch (IOException e){
             logger.error("sendRquest error: ", e);
             throw new RpcException("service invocation failure: ", e);

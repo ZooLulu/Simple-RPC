@@ -14,6 +14,7 @@ import top.elvis.rpc.codec.CommonDecoder;
 import top.elvis.rpc.codec.CommonEncoder;
 import top.elvis.rpc.enumeration.RpcError;
 import top.elvis.rpc.exception.RpcException;
+import top.elvis.rpc.hook.ShutdownHook;
 import top.elvis.rpc.provider.ServiceProvider;
 import top.elvis.rpc.provider.ServiceProviderImpl;
 import top.elvis.rpc.registry.NacosServiceRegistry;
@@ -39,18 +40,18 @@ public class NettyServer implements RpcServer {
     //本地注册表
     private final ServiceProvider serviceProvider;
     //定义序列化工具
-    private CommonSerializer serializer;
+    private final CommonSerializer serializer;
 
     public NettyServer(String host, int port) {
+        this(host, port, DEFAULT_SERIALIZER);
+    }
+
+    public NettyServer(String host, int port, Integer serializer) {
         this.host = host;
         this.port = port;
         serviceRegistry = new NacosServiceRegistry();
         serviceProvider = new ServiceProviderImpl();
-    }
-
-    @Override
-    public void setSerializer(CommonSerializer serializer) {
-        this.serializer = serializer;
+        this.serializer = CommonSerializer.getByCode(serializer);
     }
 
     @Override
@@ -68,6 +69,8 @@ public class NettyServer implements RpcServer {
 
     @Override
     public void start() {
+        //启动hook用于服务自动注销
+        ShutdownHook.getShutdownHook().addClearAllHook();
         //创建两个线程组 boosGroup、workerGroup
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();

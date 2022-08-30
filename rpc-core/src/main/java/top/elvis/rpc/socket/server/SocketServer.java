@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import top.elvis.rpc.RpcServer;
 import top.elvis.rpc.enumeration.RpcError;
 import top.elvis.rpc.exception.RpcException;
+import top.elvis.rpc.hook.ShutdownHook;
 import top.elvis.rpc.provider.ServiceProvider;
 import top.elvis.rpc.provider.ServiceProviderImpl;
 import top.elvis.rpc.registry.NacosServiceRegistry;
@@ -38,16 +39,16 @@ public class SocketServer implements RpcServer {
     private final ServiceProvider serviceProvider;
 
     public SocketServer(String host, int port) {
+        this(host, port, DEFAULT_SERIALIZER);
+    }
+
+    public SocketServer(String host, int port, Integer serializer) {
         this.host = host;
         this.port = port;
         threadPool = ThreadPoolFactory.createDefaultThreadPool("socket-rpc-server");
         this.serviceRegistry = new NacosServiceRegistry();
         this.serviceProvider = new ServiceProviderImpl();
-    }
-
-    @Override
-    public void setSerializer(CommonSerializer serializer) {
-        this.serializer = serializer;
+        this.serializer = CommonSerializer.getByCode(serializer);
     }
 
     @Override
@@ -63,13 +64,15 @@ public class SocketServer implements RpcServer {
     //监听请求，使用请求处理类和注册服务表进行后续处理
     public void start(){
         try(ServerSocket serverSocket = new ServerSocket(port)){
+//            serverSocket.bind(new InetSocketAddress(host, port));
             logger.info("RPC Server service starting......");
+            ShutdownHook.getShutdownHook().addClearAllHook();
             Socket socket;
             //循环监听
             while ((socket=serverSocket.accept())!=null){
-                logger.info("RPC client connect, ip is: "+socket.getInetAddress());
+                logger.info("client connect: {}:{}", socket.getInetAddress(), socket.getPort());
                 //开启一个服务处理线程
-                threadPool.execute(new RequestHandlerThread(socket, requestHandler, serviceRegistry, serializer));
+                threadPool.execute(new RequestHandlerThread(socket, requestHandler, serializer));
             }
             threadPool.shutdown();
         }catch(IOException e){

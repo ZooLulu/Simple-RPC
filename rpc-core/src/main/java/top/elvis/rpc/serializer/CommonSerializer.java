@@ -5,6 +5,12 @@ package top.elvis.rpc.serializer;
  * @author oofelvis
  */
 public interface CommonSerializer {
+    Integer KRYO_SERIALIZER = 0;
+    Integer JSON_SERIALIZER = 1;
+    Integer HESSIAN_SERIALIZER = 2;
+    Integer PROTOBUF_SERIALIZER = 3;
+
+    Integer DEFAULT_SERIALIZER = KRYO_SERIALIZER;
     //序列化
     byte[] serialize(Object obj);
     //反序列化

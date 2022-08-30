@@ -7,11 +7,14 @@ import top.elvis.rpc.api.HelloObject;
 /**
  * @author oofelvis
  */
-public class HelloServiceImpl implements HelloService{
+public class HelloServiceImpl implements HelloService {
+
     private static final Logger logger = LoggerFactory.getLogger(HelloServiceImpl.class);
+
     @Override
     public String hello(HelloObject object) {
-        logger.info("Get message: {}", object.getMessage());
-        return "Return id=" + object.getId();
+        logger.info("get message：{}", object.getMessage());
+        return "Netty service";
     }
+
 }

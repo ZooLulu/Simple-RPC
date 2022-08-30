@@ -7,9 +7,8 @@ import top.elvis.rpc.serializer.CommonSerializer;
  * @author oofelvis
  */
 public interface RpcServer {
+    int DEFAULT_SERIALIZER = CommonSerializer.KRYO_SERIALIZER;
     void start();
-    //传入想要的序列化工具
-    void setSerializer(CommonSerializer serializer);
     //用于向 Nacos 注册服务
     <T> void publishService(Object service, Class<T> serviceClass);
 }

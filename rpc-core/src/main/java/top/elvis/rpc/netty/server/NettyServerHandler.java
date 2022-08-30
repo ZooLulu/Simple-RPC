@@ -1,18 +1,17 @@
 package top.elvis.rpc.netty.server;
 
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
+
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import top.elvis.rpc.entity.RpcRequest;
 import top.elvis.rpc.entity.RpcResponse;
 import top.elvis.rpc.socket.server.RequestHandler;
-import top.elvis.rpc.util.ThreadPoolFactory;
-
-import java.util.concurrent.ExecutorService;
+import top.elvis.rpc.util.SingletonFactory;
 
 /**
  * 接收 RpcRequest，并且执行调用
@@ -21,39 +20,26 @@ import java.util.concurrent.ExecutorService;
 public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> {
     private static final Logger logger = LoggerFactory.getLogger(NettyServerHandler.class);
     private static RequestHandler requestHandler;
-    private static final String THREAD_NAME_PREFIX = "netty-server-handler";
-    private static final ExecutorService threadPool;
-
-    static {
-        requestHandler = new RequestHandler();
-        threadPool = ThreadPoolFactory.createDefaultThreadPool(THREAD_NAME_PREFIX);
+    public NettyServerHandler() {
+        this.requestHandler = SingletonFactory.getInstance(RequestHandler.class);
     }
-
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, RpcRequest msg) throws Exception {
-        threadPool.execute(() -> {
-            try {
-                logger.info("server received request: {}", msg);
-                Object result = requestHandler.handle(msg);
-                ChannelFuture future = ctx.writeAndFlush(RpcResponse.success(result, msg.getRequestId()));
-                future.addListener(ChannelFutureListener.CLOSE);
-            } finally {
-                ReferenceCountUtil.release(msg);
+        try {
+            if(msg.getHeartBeat()) {
+                logger.info("get client HeartBeat...");
+                return;
             }
-        });
-//        try {
-//            logger.info("server received request: {}", msg);
-//            String interfaceName = msg.getInterfaceName();
-//            //获取服务接口
-//            Object service = serviceRegistry.getService(interfaceName);
-//            //调用服务接口
-//            Object result = requestHandler.handle(msg, service);
-//            //返回成功调用结果
-//            ChannelFuture future = ctx.writeAndFlush(RpcResponse.success(result));
-//            future.addListener(ChannelFutureListener.CLOSE);
-//        } finally {
-//            ReferenceCountUtil.release(msg);
-//        }
+            logger.info("server get message: {}", msg);
+            Object result = requestHandler.handle(msg);
+            if (ctx.channel().isActive() && ctx.channel().isWritable()) {
+                ctx.writeAndFlush(RpcResponse.success(result, msg.getRequestId()));
+            } else {
+                logger.error("chanel can not write");
+            }
+        } finally {
+            ReferenceCountUtil.release(msg);
+        }
     }
 
     @Override
@@ -61,5 +47,19 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<RpcRequest> 
         logger.error("rpc invoke error:");
         cause.printStackTrace();
         ctx.close();
+    }
+
+    //长时间未收到心跳包，断开连接
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+        if (evt instanceof IdleStateEvent) {
+            IdleState state = ((IdleStateEvent) evt).state();
+            if (state == IdleState.READER_IDLE) {
+                logger.info("no heartbeat packet received for a long time, disconnect...");
+                ctx.close();
+            }
+        } else {
+            super.userEventTriggered(ctx, evt);
+        }
     }
 }
