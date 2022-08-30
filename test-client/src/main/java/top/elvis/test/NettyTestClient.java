@@ -1,6 +1,7 @@
 package top.elvis.test;
 
 import top.elvis.rpc.RpcClient;
+import top.elvis.rpc.api.ByeService;
 import top.elvis.rpc.api.HelloObject;
 import top.elvis.rpc.api.HelloService;
 import top.elvis.rpc.netty.client.NettyClient;
@@ -20,6 +21,8 @@ public class NettyTestClient {
         HelloObject object = new HelloObject(666, "This is a message");
         String res = helloService.hello(object);
         System.out.println(res);
+        ByeService byeService = rpcClientProxy.getProxy(ByeService.class);
+        System.out.println(byeService.bye("Netty"));
 
     }
 }

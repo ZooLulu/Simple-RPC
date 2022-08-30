@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 服务器默认的注册表实现
  * @author oofelvis
  */
-public class ServiceProviderImpl  implements ServiceProvider {
+public class ServiceProviderImpl implements ServiceProvider {
     private static final Logger logger = LoggerFactory.getLogger(ServiceProviderImpl.class);
     //保存服务名-服务对象,static全局唯一
     private static final Map<String, Object> serviceMap = new ConcurrentHashMap<>();
@@ -21,24 +21,12 @@ public class ServiceProviderImpl  implements ServiceProvider {
     private static final Set<String> registeredService = ConcurrentHashMap.newKeySet();
 
     @Override
-    public <T> void addServiceProvider(T service) {
-        //采用这个对象实现的接口的完整类名作为服务名
-        String serviceName = service.getClass().getCanonicalName();
+    public <T> void addServiceProvider(T service, String serviceName) {
         //已经注册过无需重复注册
         if(registeredService.contains(serviceName)) return;
         registeredService.add(serviceName);
-        //获得服务对应的接口
-        Class<?>[] interfaces = service.getClass().getInterfaces();
-        //处理服务无对应接口异常
-        if(interfaces.length==0){
-            throw new RpcException(RpcError.SERVICE_NOT_IMPLEMENT_ANY_INTERFACE);
-        }
-
-        for(Class<?> i : interfaces) {
-            serviceMap.put(i.getCanonicalName(), service);
-        }
-        logger.info("Interface: {} registered service: {}", interfaces, serviceName);
-
+        serviceMap.put(serviceName, service);
+        logger.info("interface: {} service: {}", service.getClass().getInterfaces(), serviceName);
     }
 
     @Override

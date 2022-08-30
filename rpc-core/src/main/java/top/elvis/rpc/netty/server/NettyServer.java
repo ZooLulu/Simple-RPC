@@ -7,8 +7,10 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.timeout.IdleStateHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import top.elvis.rpc.AbstractRpcServer;
 import top.elvis.rpc.RpcServer;
 import top.elvis.rpc.codec.CommonDecoder;
 import top.elvis.rpc.codec.CommonEncoder;
@@ -24,21 +26,13 @@ import top.elvis.rpc.serializer.JsonSerializer;
 import top.elvis.rpc.serializer.KryoSerializer;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.TimeUnit;
 
 /**
  * netty服务提供方
  * @author oofelvis
  */
-public class NettyServer implements RpcServer {
-    private static final Logger logger = LoggerFactory.getLogger(NettyServer.class);
-
-    private final String host;
-    private final int port;
-
-    //注册中心
-    private final ServiceRegistry serviceRegistry;
-    //本地注册表
-    private final ServiceProvider serviceProvider;
+public class NettyServer extends AbstractRpcServer {
     //定义序列化工具
     private final CommonSerializer serializer;
 
@@ -52,19 +46,7 @@ public class NettyServer implements RpcServer {
         serviceRegistry = new NacosServiceRegistry();
         serviceProvider = new ServiceProviderImpl();
         this.serializer = CommonSerializer.getByCode(serializer);
-    }
-
-    @Override
-    public <T> void publishService(Object service, Class<T> serviceClass) {
-        //未设置序列化器
-        if(serializer == null) {
-            logger.error("serializer not set");
-            throw new RpcException(RpcError.SERIALIZER_NOT_FOUND);
-        }
-        //将服务保存在本地的注册表，同时注册到 Nacos 上
-        serviceProvider.addServiceProvider(service);
-        serviceRegistry.register(serviceClass.getCanonicalName(), new InetSocketAddress(host, port));
-        start();
+        scanServices();
     }
 
     @Override
@@ -92,10 +74,11 @@ public class NettyServer implements RpcServer {
                         @Override
                         protected void initChannel(SocketChannel ch) throws Exception {
                             ChannelPipeline pipeline = ch.pipeline();
-                            //给pipeline管道设置处理器：编码器、解码器、数据处理器
-                            pipeline.addLast(new CommonEncoder(serializer));
-                            pipeline.addLast(new CommonDecoder());
-                            pipeline.addLast(new NettyServerHandler());
+                            //给pipeline管道设置心跳机制、处理器：编码器、解码器、数据处理器
+                            pipeline.addLast(new IdleStateHandler(30, 0, 0, TimeUnit.SECONDS))
+                                    .addLast(new CommonEncoder(serializer))
+                                    .addLast(new CommonDecoder())
+                                    .addLast(new NettyServerHandler());
                         }
                     });
             //绑定端口号，启动服务端

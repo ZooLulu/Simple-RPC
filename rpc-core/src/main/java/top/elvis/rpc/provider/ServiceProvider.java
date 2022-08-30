@@ -10,7 +10,7 @@ public interface ServiceProvider {
      * @params
      * service: 待注册的服务实体
      */
-    <T> void addServiceProvider(T service);
+    <T> void addServiceProvider(T service, String serviceName);
 
     Object getServiceProvider(String serviceName);
 }

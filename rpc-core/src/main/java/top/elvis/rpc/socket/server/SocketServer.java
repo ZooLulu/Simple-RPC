@@ -2,6 +2,7 @@ package top.elvis.rpc.socket.server;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import top.elvis.rpc.AbstractRpcServer;
 import top.elvis.rpc.RpcServer;
 import top.elvis.rpc.enumeration.RpcError;
 import top.elvis.rpc.exception.RpcException;
@@ -24,19 +25,12 @@ import java.util.concurrent.*;
  * RPC服务器实现，使用线程池, 利用服务注册表处理多个服务
  * @author oofelvis
  */
-public class SocketServer implements RpcServer {
-    private static final Logger logger = LoggerFactory.getLogger(RpcServer.class);
+public class SocketServer extends AbstractRpcServer {
     //服务器线程池
     private final ExecutorService threadPool;
-    private final String host;
-    private final int port;
     private CommonSerializer serializer;
     //服务反射调用处理
     private RequestHandler requestHandler = new RequestHandler();
-    //注册中心
-    private final ServiceRegistry serviceRegistry;
-    //本地服务注册表
-    private final ServiceProvider serviceProvider;
 
     public SocketServer(String host, int port) {
         this(host, port, DEFAULT_SERIALIZER);
@@ -49,22 +43,13 @@ public class SocketServer implements RpcServer {
         this.serviceRegistry = new NacosServiceRegistry();
         this.serviceProvider = new ServiceProviderImpl();
         this.serializer = CommonSerializer.getByCode(serializer);
+        scanServices();
     }
 
-    @Override
-    public <T> void publishService(Object service, Class<T> serviceClass) {
-        if(serializer == null) {
-            logger.error("SERIALIZER_NOT_FOUND");
-            throw new RpcException(RpcError.SERIALIZER_NOT_FOUND);
-        }
-        serviceProvider.addServiceProvider(service);
-        serviceRegistry.register(serviceClass.getCanonicalName(), new InetSocketAddress(host, port));
-        start();
-    }
     //监听请求，使用请求处理类和注册服务表进行后续处理
     public void start(){
-        try(ServerSocket serverSocket = new ServerSocket(port)){
-//            serverSocket.bind(new InetSocketAddress(host, port));
+        try(ServerSocket serverSocket = new ServerSocket()){
+            serverSocket.bind(new InetSocketAddress(host, port));
             logger.info("RPC Server service starting......");
             ShutdownHook.getShutdownHook().addClearAllHook();
             Socket socket;

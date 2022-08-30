@@ -87,7 +87,7 @@ public class NettyClient implements RpcClient {
                     logger.error("send message error: ", future1.cause());
                 }
             });
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
             unprocessedRequests.remove(rpcRequest.getRequestId());
             logger.error(e.getMessage(), e);
             Thread.currentThread().interrupt();

@@ -20,7 +20,9 @@ public enum RpcError {
     SERIALIZER_NOT_FOUND("serializer not found"),
     RESPONSE_NOT_MATCH("response not match"),
     FAILED_TO_CONNECT_TO_SERVICE_REGISTRY("failed to connect to service registry"),
-    REGISTER_SERVICE_FAILED("register service failed");
+    REGISTER_SERVICE_FAILED("register service failed"),
+    UNKNOWN_ERROR("unknown error"),
+    SERVICE_SCAN_PACKAGE_NOT_FOUND("service scan package not found");
 
     private final String message;
 }

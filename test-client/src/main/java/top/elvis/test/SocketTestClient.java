@@ -1,5 +1,6 @@
 package top.elvis.test;
 
+import top.elvis.rpc.api.ByeService;
 import top.elvis.rpc.api.HelloObject;
 import top.elvis.rpc.api.HelloService;
 import top.elvis.rpc.serializer.CommonSerializer;
@@ -15,10 +16,10 @@ public class SocketTestClient {
         SocketClient client = new SocketClient(CommonSerializer.KRYO_SERIALIZER);
         RpcClientProxy proxy = new RpcClientProxy(client);
         HelloService helloService = proxy.getProxy(HelloService.class);
-        HelloObject object = new HelloObject(666, "This is a message");
-        for(int i = 0; i < 20; i ++) {
-            String res = helloService.hello(object);
-            System.out.println(res);
-        }
+        HelloObject object = new HelloObject(12, "This is a message");
+        String res = helloService.hello(object);
+        System.out.println(res);
+        ByeService byeService = proxy.getProxy(ByeService.class);
+        System.out.println(byeService.bye("Netty"));
     }
 }
